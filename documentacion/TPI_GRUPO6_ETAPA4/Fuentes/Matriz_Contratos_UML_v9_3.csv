@@ -1,0 +1,85 @@
+CU,numero,emisor,receptor,operacion,parametros,visibilidad,escenario,guarda
+CU_01,,Actor,vista:PantallaPrestamos,seleccionarSolicitarEquipamiento,[],,apertura,
+CU_01,1,vista:PantallaPrestamos,control:ControlPrestamos,iniciarSolicitud,[],atributo,apertura,
+CU_01,1.1,control:ControlPrestamos,vista:PantallaPrestamos,mostrarFormulario,[],atributo,apertura,
+CU_01,,Actor,vista:PantallaPrestamos,continuarConDatos,['datos'],,prevalidación,
+CU_01,2,vista:PantallaPrestamos,control:ControlPrestamos,prevalidar,"['datos', 'usuario']",atributo,prevalidación,
+CU_01,2.1,control:ControlPrestamos,catalogo:RepositorioCatalogos,obtenerTipo,['datos.tipoId'],atributo,prevalidación,
+CU_01,2.2,control:ControlPrestamos,catalogo:RepositorioCatalogos,obtenerMateria,['datos.materiaId'],atributo,prevalidación,
+CU_01,2.3,control:ControlPrestamos,politica:PoliticaPrestamo,evaluar,"['datos', 'usuario', 'tipo', 'materia']",atributo,prevalidación,
+CU_01,2.3.1,politica:PoliticaPrestamo,calendario:CalendarioRecursos,cantidadLibre,"['tipo', 'datos.desde', 'datos.hasta']",atributo,prevalidación,[comprobar disponibilidad]
+CU_01,2.3.2,politica:PoliticaPrestamo,estudiante:Estudiante,getRestricciones,[],parámetro,prevalidación,[la política evalúa fechas/tipo de las restricciones obtenidas]
+CU_01,2.3.3,politica:PoliticaPrestamo,tipo:TipoEquipamiento,getAltaGama,[],parámetro,prevalidación,
+CU_01,2.3.4,politica:PoliticaPrestamo,estudiante:Estudiante,getAnioCursada,[],parámetro,prevalidación,[tipo de alta gama: solo escenario Estudiante; condición definida en los datos ficticios]
+CU_01,2.4,control:ControlPrestamos,vista:PantallaPrestamos,mostrarResumen,['datos'],atributo,prevalidación,[resultado válido; aval puede quedar pendiente]
+CU_01,,control:ControlPrestamos,vista:PantallaPrestamos,mostrarErrores,['resultado.errores'],atributo,alternativa,[4a incompletos / 4b sin stock / 4c restricción / 4d no elegible]
+CU_01,,Actor,vista:PantallaPrestamos,seleccionarVolver,[],,alternativa,[5a Volver]
+CU_01,,vista:PantallaPrestamos,vista:PantallaPrestamos,mostrarFormulario,[],self,alternativa,"[5a Volver: conserva los datos, no reinicia trámite]"
+CU_01,,Actor,vista:PantallaPrestamos,seleccionarCancelar,[],,alternativa,[5b Cancelar]
+CU_01,,Actor,vista:PantallaPrestamos,seleccionarConfirmar,[],,confirmación,
+CU_01,3,vista:PantallaPrestamos,control:ControlPrestamos,confirmar,"['datos', 'usuario']",atributo,confirmación,
+CU_01,3.1,control:ControlPrestamos,catalogo:RepositorioCatalogos,obtenerTipo,['datos.tipoId'],atributo,revalidación,
+CU_01,3.2,control:ControlPrestamos,catalogo:RepositorioCatalogos,obtenerMateria,['datos.materiaId'],atributo,revalidación,
+CU_01,3.3,control:ControlPrestamos,politica:PoliticaPrestamo,revalidar,"['datos', 'usuario', 'tipo', 'materia']",atributo,revalidación,
+CU_01,3.3.1,politica:PoliticaPrestamo,calendario:CalendarioRecursos,cantidadLibre,"['tipo', 'datos.desde', 'datos.hasta']",atributo,revalidación,
+CU_01,3.3.2,politica:PoliticaPrestamo,estudiante:Estudiante,getRestricciones,[],parámetro,revalidación,[la política evalúa fechas/tipo de las restricciones obtenidas]
+CU_01,3.3.3,politica:PoliticaPrestamo,tipo:TipoEquipamiento,getAltaGama,[],parámetro,revalidación,
+CU_01,3.3.4,politica:PoliticaPrestamo,estudiante:Estudiante,getAnioCursada,[],parámetro,revalidación,[tipo de alta gama: solo escenario Estudiante; condición definida en los datos ficticios]
+CU_01,,control:ControlPrestamos,vista:PantallaPrestamos,mostrarErrores,['resultado.errores'],atributo,alternativa,[conflicto antes del guardado: NO crear]
+CU_01,3.4,control:ControlPrestamos,solicitud:SolicitudPrestamo,SolicitudPrestamo,"['datos', 'usuario', 'tipo', 'materia', 'resultado.requiereAval']",creación,guardado,[revalidación válida]
+CU_01,3.5,control:ControlPrestamos,auditor:AuditorSolicitudes,registrarAlta,"['solicitud', 'usuario']",atributo,guardado,
+CU_01,3.5.1,auditor:AuditorSolicitudes,cambio:CambioEstado,CambioEstado,"['anterior', 'PendienteSolicitada', 'usuario']",creación,guardado,
+CU_01,3.5.1.1,auditor:AuditorSolicitudes,solicitud:SolicitudPrestamo,agregarCambioEstado,['cambio'],parámetro,guardado,"[mutación de historial, sin procesamiento de negocio en entidad]"
+CU_01,3.6,control:ControlPrestamos,solicitudes:RepositorioSolicitudes,guardarConHistorial,['solicitud'],atributo,guardado,[transacción: solicitud y cambio]
+CU_01,3.7,control:ControlPrestamos,notificador:NotificadorSolicitudes,avisarAval,"['solicitud', 'materia']",atributo,avisos,[4e: requiere aval]
+CU_01,3.7.1,notificador:NotificadorSolicitudes,usuarios:RepositorioUsuarios,destinatariosAval,['materia'],atributo,avisos,
+CU_01,3.7.2,notificador:NotificadorSolicitudes,aviso:Notificacion,Notificacion,"['solicitud', 'destinatario']",creación,avisos,[loop: por cada destinatario autorizado]
+CU_01,3.7.2.1,notificador:NotificadorSolicitudes,canal:CanalPlataforma,enviar,['aviso'],atributo,avisos,[RNF-21: canal de plataforma seleccionado; envío por email fuera del prototipo]
+CU_01,3.7.3,canal:CanalPlataforma,avisosRepo:RepositorioNotificaciones,guardar,['aviso'],atributo,avisos,[loop: por cada destinatario autorizado]
+CU_01,3.8,control:ControlPrestamos,vista:PantallaPrestamos,mostrarConfirmacion,['solicitud.numero'],atributo,guardado,
+CU_01,,Actor,vista:PantallaPrestamos,seleccionarMisSolicitudes,[],,consulta,
+CU_01,4,vista:PantallaPrestamos,control:ControlPrestamos,listarDe,['usuario.id'],atributo,consulta,
+CU_01,4.1,control:ControlPrestamos,solicitudes:RepositorioSolicitudes,listarDe,['usuario.id'],atributo,consulta,
+CU_01,4.2,control:ControlPrestamos,vista:PantallaPrestamos,mostrarListado,['lista'],atributo,consulta,
+CU_02,,Actor,vista:PantallaProrrogas,abrirMisPrestamos,[],,listado,
+CU_02,1,vista:PantallaProrrogas,control:ControlProrrogas,listarPrestamos,['usuario'],atributo,listado,
+CU_02,1.1,control:ControlProrrogas,prestamos:RepositorioPrestamos,listarDe,['usuario.id'],atributo,listado,
+CU_02,1.2,control:ControlProrrogas,vista:PantallaProrrogas,mostrarPrestamos,['lista'],atributo,listado,
+CU_02,,Actor,vista:PantallaProrrogas,seleccionarPrestamo,[],,selección,
+CU_02,2,vista:PantallaProrrogas,control:ControlProrrogas,preparar,"['id', 'usuario']",atributo,selección,
+CU_02,2.1,control:ControlProrrogas,prestamos:RepositorioPrestamos,obtenerDe,"['id', 'usuario.id']",atributo,selección,
+CU_02,2.2,control:ControlProrrogas,prestamo:Prestamo,getEstado,[],variable local,selección,[el préstamo existe y pertenece al usuario]
+CU_02,2.3,control:ControlProrrogas,prestamo:Prestamo,getVenceEn,[],variable local,selección,[activo]
+CU_02,,control:ControlProrrogas,vista:PantallaProrrogas,mostrarError,['mensaje'],atributo,alternativa,[4a préstamo no activo: volver a lista; no mostrar formulario]
+CU_02,2.4,control:ControlProrrogas,vista:PantallaProrrogas,mostrarFormulario,['vence'],atributo,selección,[activo]
+CU_02,,Actor,vista:PantallaProrrogas,ingresarFechaYContinuar,[],,prevalidación,
+CU_02,3,vista:PantallaProrrogas,control:ControlProrrogas,prevalidar,"['prestamo', 'fecha']",atributo,prevalidación,
+CU_02,3.1,control:ControlProrrogas,prestamo:Prestamo,getVenceEn,[],variable local,prevalidación,
+CU_02,3.2,control:ControlProrrogas,calendario:CalendarioRecursos,tieneConflicto,"['prestamo', 'fecha']",atributo,prevalidación,
+CU_02,,control:ControlProrrogas,vista:PantallaProrrogas,mostrarError,['mensaje'],atributo,alternativa,[8a conflicto: cambiar fecha o volver]
+CU_02,3.3,control:ControlProrrogas,vista:PantallaProrrogas,mostrarResumen,['fecha'],atributo,prevalidación,[sin conflicto; vigente]
+CU_02,,Actor,vista:PantallaProrrogas,seleccionarVolver,[],,alternativa,[9a desistimiento antes de confirmar]
+CU_02,,vista:PantallaProrrogas,vista:PantallaProrrogas,mostrarFormulario,['vence'],self,alternativa,"[volver a completar fecha, sin registrar]"
+CU_02,,Actor,vista:PantallaProrrogas,confirmarProrroga,[],,guardado,
+CU_02,4,vista:PantallaProrrogas,control:ControlProrrogas,confirmar,"['prestamo', 'fecha', 'usuario']",atributo,guardado,
+CU_02,4.1,control:ControlProrrogas,prestamo:Prestamo,getEstado,[],variable local,guardado,[revalidación del préstamo]
+CU_02,4.2,control:ControlProrrogas,calendario:CalendarioRecursos,tieneConflicto,"['prestamo', 'fecha']",atributo,guardado,[revalidar conflicto]
+CU_02,,control:ControlProrrogas,vista:PantallaProrrogas,mostrarError,['mensaje'],atributo,alternativa,[prestamo dejó de estar activo o existe conflicto: no guardar]
+CU_02,4.3,control:ControlProrrogas,prorroga:SolicitudProrroga,SolicitudProrroga,"['prestamo', 'fecha']",creación,guardado,[válido]
+CU_02,4.4,control:ControlProrrogas,auditor:AuditorSolicitudes,registrarAlta,"['prorroga', 'usuario']",atributo,guardado,
+CU_02,4.4.1,auditor:AuditorSolicitudes,cambio:CambioEstado,CambioEstado,"['anterior', 'PendienteSolicitada', 'usuario']",creación,guardado,
+CU_02,4.4.1.1,auditor:AuditorSolicitudes,prorroga:SolicitudProrroga,agregarCambioEstado,['cambio'],parámetro,guardado,"[mutación de historial, sin procesamiento de negocio en entidad]"
+CU_02,4.5,control:ControlProrrogas,solicitudes:RepositorioSolicitudes,guardarConHistorial,['prorroga'],atributo,guardado,
+CU_02,4.6,control:ControlProrrogas,vista:PantallaProrrogas,mostrarConfirmacion,['PendienteSolicitada'],atributo,guardado,
+CU_07,,Actor,vista:PantallaRegistro,seleccionarRegistrarse,[],,inicio,
+CU_07,1,vista:PantallaRegistro,control:ControlRegistro,iniciarRegistro,[],atributo,inicio,
+CU_07,1.1,control:ControlRegistro,vista:PantallaRegistro,mostrarFormulario,[],atributo,inicio,
+CU_07,,Actor,vista:PantallaRegistro,enviarDatos,[],,validación,
+CU_07,2,vista:PantallaRegistro,control:ControlRegistro,validarDatos,['datos'],atributo,validación,
+CU_07,2.1,control:ControlRegistro,usuarios:RepositorioUsuarios,existeDni,['datos.dni'],atributo,validación,
+CU_07,2.2,control:ControlRegistro,usuarios:RepositorioUsuarios,existeCorreo,['datos.correo'],atributo,validación,
+CU_07,,control:ControlRegistro,vista:PantallaRegistro,mostrarError,['mensaje'],atributo,alternativa,[4a inválidos / 4b duplicados: conservar formulario]
+CU_07,3,control:ControlRegistro,control:ControlRegistro,crearEstudiante,['datos'],self,creación,[válido y único]
+CU_07,3.1,control:ControlRegistro,estudiante:Estudiante,Estudiante,['datos'],creación,creación,
+CU_07,3.2,control:ControlRegistro,usuarios:RepositorioUsuarios,guardar,['estudiante'],atributo,creación,
+CU_07,3.3,control:ControlRegistro,vista:PantallaRegistro,mostrarConfirmacion,[],atributo,creación,
