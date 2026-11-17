@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laboratorio de Medios Audiovisuales — Solicitud de Préstamo (CU_01)</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="encabezado">
+    <div class="contenedor encabezado-contenido">
+      <div>
+        <p class="subtitulo-institucional">UNTDF · Laboratorio de Medios Audiovisuales</p>
+        <h1>Gestión de Servicios — Solicitud de Equipamiento (CU_01)</h1>
+      </div>
+
+      <div class="panel-usuario-demo">
+        <label for="usuario-demo">Usuario de demostración (<code>X-Usuario-Demo</code>)</label>
+        <select id="usuario-demo" name="usuario-demo">
+          <option value="estudiante-comun">Estudiante común (estudiante-comun)</option>
+          <option value="estudiante-elegible">Estudiante elegible alta gama (estudiante-elegible)</option>
+          <option value="estudiante-restringido">Estudiante con restricción (estudiante-restringido)</option>
+          <option value="docente-demo">Docente (docente-demo)</option>
+          <option value="personal-demo">Personal laboratorio — rol no permitido (personal-demo)</option>
+        </select>
+        <small class="nota-demo">
+          Simulación explícita de identidad para demo. No constituye autenticación productiva.
+        </small>
+      </div>
+    </div>
+  </header>
+
+  <nav class="barra-navegacion" aria-label="Secciones del prototipo">
+    <div class="contenedor nav-botones">
+      <button type="button" id="tab-solicitar" class="tab-btn activo" aria-pressed="true">
+        Solicitar equipamiento
+      </button>
+      <button type="button" id="tab-mis-solicitudes" class="tab-btn" aria-pressed="false">
+        Mis solicitudes
+      </button>
+    </div>
+  </nav>
+
+  <main class="contenedor principal">
+    <!-- Alerta global para errores HTTP (403, 409, 422, 500, 503) o mensajes generales -->
+    <section id="alerta-global" class="alerta oculto" role="alert" aria-live="polite">
+      <div class="alerta-encabezado">
+        <strong id="alerta-titulo">Error</strong>
+        <button type="button" id="btn-cerrar-alerta" class="btn-cerrar" aria-label="Cerrar aviso">×</button>
+      </div>
+      <p id="alerta-mensaje"></p>
+      <ul id="alerta-detalles" class="lista-errores oculto"></ul>
+    </section>
+
+    <!-- VISTA 1: FORMULARIO DE SOLICITUD -->
+    <section id="vista-formulario" class="tarjeta">
+      <div class="tarjeta-encabezado">
+        <h2>1. Datos de la solicitud de préstamo</h2>
+        <p class="texto-secundario">
+          Completá el equipamiento requerido, el período de uso y la materia o proyecto asociado.
+          Toda solicitud ingresada queda en estado <strong>Pendiente/Solicitada</strong> y no reserva unidades físicas de forma automática.
+        </p>
+      </div>
+
+      <form id="form-solicitud" novalidate>
+        <div class="grilla-formulario">
+          <div class="campo-grupo">
+            <label for="tipo_id">Tipo de equipamiento *</label>
+            <select id="tipo_id" name="tipo_id">
+              <option value="">Cargando tipos de equipamiento...</option>
+            </select>
+            <p class="error-campo oculto" id="error-tipo_id"></p>
+          </div>
+
+          <div class="campo-grupo">
+            <label for="cantidad">Cantidad de unidades *</label>
+            <input type="number" id="cantidad" name="cantidad" value="1" step="1" />
+            <p class="error-campo oculto" id="error-cantidad"></p>
+          </div>
+
+          <div class="campo-grupo">
+            <label for="desde">Fecha y hora de inicio (desde) *</label>
+            <input type="datetime-local" id="desde" name="desde" />
+            <p class="error-campo oculto" id="error-desde"></p>
+          </div>
+
+          <div class="campo-grupo">
+            <div class="label-con-accion">
+              <label for="hasta">Fecha y hora de devolución (hasta) *</label>
+              <button type="button" id="btn-sugerir-48h" class="btn-link">
+                Sugerir +48 h estándar
+              </button>
+            </div>
+            <input type="datetime-local" id="hasta" name="hasta" />
+            <small class="ayuda-campo">
+              Período estándar sugerido: 48 horas desde el retiro (RNF-03). Intervalo <code>[desde, hasta)</code>.
+            </small>
+            <p class="error-campo oculto" id="error-hasta"></p>
+          </div>
+
+          <div class="campo-grupo campo-ancho">
+            <label for="materia_id">Materia o proyecto asociado *</label>
+            <select id="materia_id" name="materia_id">
+              <option value="">Cargando materias...</option>
+            </select>
+            <p class="error-campo oculto" id="error-materia_id"></p>
+          </div>
+        </div>
+
+        <div class="acciones-formulario">
+          <button type="button" id="btn-cancelar-form" class="btn btn-secundario">
+            Cancelar
+          </button>
+          <button type="submit" id="btn-continuar" class="btn btn-primario">
+            Continuar
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- VISTA 2: RESUMEN DE PREVALIDACIÓN -->
+    <section id="vista-resumen" class="tarjeta oculto" aria-labelledby="titulo-resumen">
+      <div class="tarjeta-encabezado">
+        <h2 id="titulo-resumen">2. Resumen de la solicitud</h2>
+        <p class="texto-secundario">
+          Revisá los datos validados por el sistema antes de confirmar el registro.
+        </p>
+      </div>
+
+      <dl class="lista-resumen">
+        <div class="fila-resumen">
+          <dt>Usuario solicitante (demo)</dt>
+          <dd id="resumen-usuario">—</dd>
+        </div>
+        <div class="fila-resumen">
+          <dt>Tipo de equipamiento</dt>
+          <dd id="resumen-tipo">—</dd>
+        </div>
+        <div class="fila-resumen">
+          <dt>Cantidad</dt>
+          <dd id="resumen-cantidad">—</dd>
+        </div>
+        <div class="fila-resumen">
+          <dt>Desde</dt>
+          <dd id="resumen-desde">—</dd>
+        </div>
+        <div class="fila-resumen">
+          <dt>Hasta</dt>
+          <dd id="resumen-hasta">—</dd>
+        </div>
+        <div class="fila-resumen">
+          <dt>Materia / Proyecto</dt>
+          <dd id="resumen-materia">—</dd>
+        </div>
+        <div class="fila-resumen">
+          <dt>Condición de validación</dt>
+          <dd id="resumen-condicion-aval">—</dd>
+        </div>
+      </dl>
+
+      <div id="aviso-aval-resumen" class="banner-info banner-aval oculto">
+        <strong>Requiere aval docente (CU_01 · 4e / RNF-11):</strong>
+        Sos académicamente elegible para este equipamiento de alta gama, pero la solicitud quedará en estado
+        <strong>Pendiente/Solicitada</strong> a la espera de validación docente posterior (CU_03) y se generará un aviso interno.
+      </div>
+
+      <div class="banner-info">
+        <strong>Importante:</strong> Confirmar registra la petición como <strong>Pendiente/Solicitada</strong>.
+        No asigna ni bloquea unidades físicas hasta que sea aprobada.
+      </div>
+
+      <div class="acciones-formulario">
+        <button type="button" id="btn-cancelar-resumen" class="btn btn-peligro-suave">
+          Cancelar
+        </button>
+        <button type="button" id="btn-volver" class="btn btn-secundario">
+          Volver
+        </button>
+        <button type="button" id="btn-confirmar" class="btn btn-primario">
+          Confirmar
+        </button>
+      </div>
+    </section>
+
+    <!-- VISTA 3: CONFIRMACIÓN DE REGISTRO -->
+    <section id="vista-confirmacion" class="tarjeta oculto" aria-labelledby="titulo-confirmacion">
+      <div class="tarjeta-encabezado">
+        <span class="badge badge-pendiente">Solicitud registrada</span>
+        <h2 id="titulo-confirmacion">Solicitud creada en estado Pendiente/Solicitada</h2>
+      </div>
+
+      <div class="caja-resultado">
+        <p><strong>Número de solicitud:</strong> <span id="confirmacion-numero" class="codigo-destacado">—</span></p>
+        <p><strong>Estado actual:</strong> <span id="confirmacion-estado">PENDIENTE_SOLICITADA</span></p>
+        <p id="confirmacion-detalle-aval"></p>
+        <p class="texto-secundario">
+          Recordá que una solicitud pendiente no equivale a una aprobación ni reserva unidades concretas.
+        </p>
+      </div>
+
+      <div id="caja-advertencias" class="banner-advertencia oculto" role="status">
+        <strong>Advertencias del sistema:</strong>
+        <ul id="lista-advertencias"></ul>
+      </div>
+
+      <div class="acciones-formulario">
+        <button type="button" id="btn-nueva-solicitud" class="btn btn-secundario">
+          Nueva solicitud
+        </button>
+        <button type="button" id="btn-ir-mis-solicitudes" class="btn btn-primario">
+          Ver Mis solicitudes
+        </button>
+      </div>
+    </section>
+
+    <!-- VISTA 4: MIS SOLICITUDES -->
+    <section id="vista-mis-solicitudes" class="tarjeta oculto" aria-labelledby="titulo-mis-solicitudes">
+      <div class="tarjeta-encabezado encabezado-con-boton">
+        <div>
+          <h2 id="titulo-mis-solicitudes">Mis solicitudes</h2>
+          <p class="texto-secundario">
+            Listado de peticiones registradas para <strong id="etiqueta-usuario-listado">estudiante-comun</strong>.
+          </p>
+        </div>
+        <button type="button" id="btn-refrescar-solicitudes" class="btn btn-secundario">
+          Actualizar listado
+        </button>
+      </div>
+
+      <div id="estado-listado" class="texto-secundario"></div>
+
+      <div class="tabla-contenedor">
+        <table id="tabla-solicitudes" class="tabla oculto">
+          <thead>
+            <tr>
+              <th>Número</th>
+              <th>Equipamiento</th>
+              <th>Cant.</th>
+              <th>Período</th>
+              <th>Materia / Proyecto</th>
+              <th>Estado</th>
+              <th>Validación / Aval</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo-tabla-solicitudes"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
