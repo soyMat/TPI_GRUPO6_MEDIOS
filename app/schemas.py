@@ -6,6 +6,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 
+# Este DTO valida solamente la forma de la entrada. Las reglas de cantidad,
+# período, disponibilidad y elegibilidad pertenecen a PoliticaPrestamo.
 class DatosSolicitud(BaseModel):
     tipo_id: str = Field(min_length=1)
     cantidad: int
@@ -13,6 +15,8 @@ class DatosSolicitud(BaseModel):
     hasta: datetime
     materia_id: str = Field(min_length=1)
 
+
+# Los siguientes schemas fijan el contrato de salida sin exponer modelos ORM.
 class ErrorValidacion(BaseModel):
     codigo: str
     mensaje: str
@@ -71,13 +75,9 @@ class SolicitudListadoSalida(BaseModel):
     requiere_aval: bool = False
 
 
-class RespuestaError(BaseModel):
-    codigo: str
-    mensaje: str
-    errores: list[ErrorValidacion] = Field(default_factory=list)
-
-
 def leer_atributo(objeto: Any, nombre: str, predeterminado: Any = None) -> Any:
+    """Lee por igual diccionarios de prueba y objetos del dominio integrados."""
+
     if isinstance(objeto, dict):
         return objeto.get(nombre, predeterminado)
     return getattr(objeto, nombre, predeterminado)

@@ -7,6 +7,8 @@ from app.schemas import DatosSolicitud, leer_atributo
 
 
 class ErrorCU01(Exception):
+    """Error controlado que la capa HTTP traduce al estado correspondiente."""
+
     def __init__(
         self,
         status_code: int,
@@ -47,11 +49,17 @@ class ControlPrestamos:
         return self.catalogos.listar_materias()
 
     def prevalidar(self, datos: DatosSolicitud, usuario: Any) -> dict[str, Any]:
+        """Consulta catálogos y delega las reglas sin modificar datos persistentes."""
+
         tipo, materia = self._obtener_catalogos(datos)
         resultado = self.politica.evaluar(datos, usuario, tipo, materia)
         return self._resultado_valido(resultado, datos, tipo, materia)
 
     def confirmar(self, datos: DatosSolicitud, usuario: Any) -> dict[str, Any]:
+        """Revalida y registra únicamente una solicitud pendiente con su historial."""
+
+        # Los catálogos y las reglas se vuelven a consultar porque la disponibilidad
+        # pudo cambiar desde la pantalla de resumen.
         tipo, materia = self._obtener_catalogos(datos)
         resultado = self.politica.revalidar(datos, usuario, tipo, materia)
         resultado_normalizado = self._resultado_valido(
@@ -59,6 +67,8 @@ class ControlPrestamos:
         )
         requiere_aval = resultado_normalizado["requiere_aval"]
 
+        # Solicitud e historial se guardan antes de avisar. Si esta parte falla, la
+        # API nunca devuelve un número de solicitud ni un falso éxito.
         try:
             solicitud = self.crear_solicitud(
                 datos, usuario, tipo, materia, requiere_aval
@@ -76,6 +86,8 @@ class ControlPrestamos:
 
         advertencias: list[str] = []
         if requiere_aval:
+            # El RFC permite conservar la solicitud si falla el aviso posterior;
+            # la advertencia hace visible esa diferencia durante la demostración.
             try:
                 self.notificador.avisar_aval(solicitud, materia)
             except Exception:
@@ -113,7 +125,10 @@ class ControlPrestamos:
     ) -> dict[str, Any]:
         valido = bool(leer_atributo(resultado, "valido", False))
         requiere_aval = bool(leer_atributo(resultado, "requiere_aval", False))
-        errores = [self._normalizar_error(error) for error in leer_atributo(resultado, "errores", [])]
+        errores = [
+            self._normalizar_error(error)
+            for error in leer_atributo(resultado, "errores", [])
+        ]
 
         if not valido:
             status_code = self._status_para_errores(errores)
@@ -149,6 +164,8 @@ class ControlPrestamos:
 
     @staticmethod
     def _status_para_errores(errores: list[dict[str, Any]]) -> int:
+        """Agrupa errores de dominio en los estados HTTP acordados por el equipo."""
+
         codigos = {error["codigo"] for error in errores}
         if codigos & {"SIN_DISPONIBILIDAD", "DISPONIBILIDAD_CAMBIO"}:
             return 409

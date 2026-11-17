@@ -1,11 +1,13 @@
 """API FastAPI del prototipo CU_01."""
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Header
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.controller import ControlPrestamos, ErrorCU01
 from app.schemas import (
@@ -19,12 +21,19 @@ from app.schemas import (
 )
 
 
+DIRECTORIO_ESTATICO = Path(__file__).resolve().parent / "static"
+
+
 def crear_app(
     control: ControlPrestamos | None = None,
     resolver_usuario_demo: Callable[[str], Any] | None = None,
 ) -> FastAPI:
+    """Construye la API permitiendo inyectar colaboradores reales o dobles de prueba."""
+
     api = FastAPI(title="Prototipo CU_01 - Grupo 6")
 
+    # Mientras los otros módulos no estén integrados, la API informa el faltante
+    # en lugar de simular una operación exitosa.
     def control_configurado() -> ControlPrestamos:
         if control is None:
             raise ErrorCU01(
@@ -35,6 +44,7 @@ def crear_app(
         return control
 
     def usuario_demo(alias: str | None) -> Any:
+        # El alias sólo identifica datos ficticios de la demo; no es autenticación.
         if resolver_usuario_demo is None:
             raise ErrorCU01(
                 503,
@@ -61,6 +71,8 @@ def crear_app(
             )
         return usuario
 
+    # Todos los errores propios del caso de uso mantienen una respuesta uniforme
+    # para que el frontend pueda mostrar código, mensaje y campos afectados.
     @api.exception_handler(ErrorCU01)
     async def manejar_error_cu01(_request: Any, error: ErrorCU01) -> JSONResponse:
         return JSONResponse(
@@ -137,6 +149,14 @@ def crear_app(
     ) -> list[Any]:
         usuario = usuario_demo(x_usuario_demo)
         return control_configurado().listar_de(usuario)
+
+    # El montaje debe quedar después de las rutas /api para que StaticFiles no las
+    # intercepte. La ruta absoluta permite iniciar Uvicorn desde cualquier carpeta.
+    api.mount(
+        "/",
+        StaticFiles(directory=DIRECTORIO_ESTATICO, html=True),
+        name="static",
+    )
 
     return api
 
