@@ -1,6 +1,6 @@
 
 from sqlalchemy.orm import Session
-from app.models import Notificacion
+from models import Notificacion
 
 class NotificationRepository:
     def __init__(self, session: Session):
