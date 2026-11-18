@@ -1,7 +1,7 @@
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from app.models import Solicitud, SolicitudPrestamo, CambioEstado
+from models import Solicitud, SolicitudPrestamo, CambioEstado
 
 class SolicitudRepository:
     def __init__(self, session: Session):
