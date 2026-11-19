@@ -4,12 +4,12 @@ Instrucciones para asistentes de IA (LLMs) que trabajan en este repositorio.
 
 ## Regla principal
 
-**Toda feature nueva debe seguir el proceso definido en [SDD_PLAYBOOK.md](./SDD_PLAYBOOK.md)**
+**Toda feature nueva debe seguir el proceso definido en [SDD_PLAYBOOK.md](./documentacion/TPI_GRUPO6_ETAPA4/Material_catedra/SDD_PLAYBOOK.md)**
 (Plan → Build → Validate). No se escribe código de una feature sin pasar antes por la fase Plan.
 
 | Fase | Qué debés hacer | Referencia |
 | :--- | :--- | :--- |
-| **Plan** | Completar o actualizar el RFC de la feature a partir de [RFC_TEMPLATE.md](./RFC_TEMPLATE.md). Listar ambigüedades y preguntar antes de decidir. Definir los casos de prueba (TC-xx). | Playbook, sección 3 |
+| **Plan** | Completar o actualizar el RFC de la feature a partir de [RFC_TEMPLATE.md](./documentacion/TPI_GRUPO6_ETAPA4/Material_catedra/RFC_TEMPLATE.md). Listar ambigüedades y preguntar antes de decidir. Definir los casos de prueba (TC-xx). | Playbook, sección 3 |
 | **Build** | Implementar por tareas chicas, ejecutar lo generado y referenciar el requisito. | Playbook, sección 4 |
 | **Validate** | Correr los TC-xx, verificar la trazabilidad y documentar los desvíos. | Playbook, sección 5 |
 
