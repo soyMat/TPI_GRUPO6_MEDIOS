@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import Integer, func, select
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -167,6 +167,10 @@ class RepositorioSolicitudes:
 
     def guardar_con_historial(self, solicitud: SolicitudPrestamo) -> SolicitudPrestamo:
         try:
+            ultimo_numero = self.session.scalar(
+                select(func.max(SolicitudPrestamo.numero.cast(Integer)))
+            )
+            solicitud.numero = str((ultimo_numero or 0) + 1)
             self.session.add(solicitud)
             self.session.commit()
             self.session.refresh(solicitud)

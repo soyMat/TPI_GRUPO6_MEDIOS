@@ -76,7 +76,6 @@ class TipoEquipamiento(Base):
     alta_gama: Mapped[bool] = mapped_column(Boolean, default=False)
     equipamientos: Mapped[list["Equipamiento"]] = relationship(back_populates="tipo")
     restricciones: Mapped[list["Restriccion"]] = relationship()
-    tipo: Mapped["TipoEquipamiento"] = relationship()
 
 # EQUIPAMIENTO
 class Equipamiento(Base):
