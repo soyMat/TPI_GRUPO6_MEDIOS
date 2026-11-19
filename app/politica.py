@@ -293,7 +293,13 @@ class PoliticaPrestamo:
 
     @staticmethod
     def _validar_rol(usuario: Any) -> list[dict[str, Any]]:
-        rol = _normalizar_texto(leer_atributo(usuario, "rol", ""))
+        rol = _normalizar_texto(
+            leer_atributo(
+                usuario,
+                "rol",
+                leer_atributo(usuario, "tipo_usuario", ""),
+            )
+        )
         if rol not in ROLES_PERMITIDOS_CU01:
             return [
                 {
@@ -334,7 +340,11 @@ class PoliticaPrestamo:
             alcance_tipo = leer_atributo(
                 restriccion,
                 "tipo_equipamiento_id",
-                leer_atributo(restriccion, "tipo_id", None),
+                leer_atributo(
+                    restriccion,
+                    "tipo_id",
+                    leer_atributo(restriccion, "tipo_codigo", None),
+                ),
             )
             if alcance_tipo is not None and str(alcance_tipo) != tipo_id:
                 continue
@@ -370,7 +380,13 @@ class PoliticaPrestamo:
         if not es_alta_gama:
             return True, False, None
 
-        rol = _normalizar_texto(leer_atributo(usuario, "rol", ""))
+        rol = _normalizar_texto(
+            leer_atributo(
+                usuario,
+                "rol",
+                leer_atributo(usuario, "tipo_usuario", ""),
+            )
+        )
         if rol == "DOCENTE":
             # No aplicar reglas académicas exclusivas de Estudiante a Docente (TC-13)
             return True, False, None
@@ -387,7 +403,11 @@ class PoliticaPrestamo:
             leer_atributo(
                 materia,
                 "habilita_alta_gama",
-                leer_atributo(materia, "avanzada", False),
+                leer_atributo(
+                    materia,
+                    "avanzada",
+                    leer_atributo(materia, "prioridad", 0) >= 3,
+                ),
             )
         )
 
