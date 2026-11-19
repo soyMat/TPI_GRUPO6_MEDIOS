@@ -75,6 +75,8 @@ class TipoEquipamiento(Base):
     nombre: Mapped[str] = mapped_column(String(100))
     alta_gama: Mapped[bool] = mapped_column(Boolean, default=False)
     equipamientos: Mapped[list["Equipamiento"]] = relationship(back_populates="tipo")
+    restricciones: Mapped[list["Restriccion"]] = relationship()
+    tipo: Mapped["TipoEquipamiento"] = relationship()
 
 # EQUIPAMIENTO
 class Equipamiento(Base):
@@ -125,7 +127,7 @@ class Restriccion(Base):
 # SOLICITUDES
 class Solicitud(Base):
     __tablename__ = "solicitudes"
-    numero: Mapped[int] = mapped_column(primary_key=True)
+    numero: Mapped[str] = mapped_column(String, primary_key=True)
     usuario_id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"))
     creada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     estado: Mapped[str] = mapped_column(String(40),default="PENDIENTE_SOLICITADA")
