@@ -1,13 +1,28 @@
 """API FastAPI del prototipo CU_01."""
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Header
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 from app.controller import ControlPrestamos, ErrorCU01
+from app.models import Base
+from app.notifications import NotificadorSolicitudes
+from app.politica import PoliticaPrestamo
+from app.repository import (
+    AuditorSolicitudes,
+    CalendarioRecursos,
+    RepositorioCatalogos,
+    RepositorioSolicitudes,
+    ResolutorUsuarioDemo,
+    crear_solicitud_prestamo,
+)
 from app.schemas import (
     DatosSolicitud,
     MateriaSalida,
@@ -17,14 +32,21 @@ from app.schemas import (
     TipoEquipamientoSalida,
     leer_atributo,
 )
+from scripts.seed_demo import DATABASE_URL_DEFECTO, poblar_datos_demo
+
+
+DIRECTORIO_ESTATICO = Path(__file__).resolve().parent / "static"
 
 
 def crear_app(
     control: ControlPrestamos | None = None,
     resolver_usuario_demo: Callable[[str], Any] | None = None,
+    montar_estaticos: bool = True,
 ) -> FastAPI:
+    """Construye la API con colaboradores reales o dobles de prueba."""
     api = FastAPI(title="Prototipo CU_01 - Grupo 6")
 
+    # Si faltan colaboradores, se informa el problema en lugar de simular exito.
     def control_configurado() -> ControlPrestamos:
         if control is None:
             raise ErrorCU01(
@@ -35,6 +57,7 @@ def crear_app(
         return control
 
     def usuario_demo(alias: str | None) -> Any:
+        # El alias identifica personas ficticias; no representa autenticacion real.
         if resolver_usuario_demo is None:
             raise ErrorCU01(
                 503,
@@ -52,7 +75,13 @@ def crear_app(
         if usuario is None:
             raise ErrorCU01(403, "USUARIO_DEMO_INVALIDO", "El usuario demo no existe.")
 
-        rol = str(leer_atributo(usuario, "rol", "")).lower()
+        rol = str(
+            leer_atributo(
+                usuario,
+                "rol",
+                leer_atributo(usuario, "tipo_usuario", ""),
+            )
+        ).lower()
         if rol not in {"estudiante", "docente"}:
             raise ErrorCU01(
                 403,
@@ -138,8 +167,57 @@ def crear_app(
         usuario = usuario_demo(x_usuario_demo)
         return control_configurado().listar_de(usuario)
 
+    # Se monta al final para que StaticFiles no intercepte las rutas /api.
+    if montar_estaticos and DIRECTORIO_ESTATICO.is_dir():
+        api.mount(
+            "/",
+            StaticFiles(directory=str(DIRECTORIO_ESTATICO), html=True),
+            name="static",
+        )
+
     return api
 
 
-# La integración real se configurará cuando lleguen los módulos de los integrantes 2 y 3.
-app = crear_app()
+def crear_app_integrada(
+    database_url: str = DATABASE_URL_DEFECTO,
+    montar_estaticos: bool = True,
+) -> FastAPI:
+    """Ensambla la demo con SQLite, politica, repositorios y avisos internos."""
+    argumentos_sqlite = (
+        {"check_same_thread": False} if database_url.startswith("sqlite") else {}
+    )
+    motor = create_engine(database_url, connect_args=argumentos_sqlite)
+    Base.metadata.create_all(bind=motor)
+
+    fabrica_sesiones = sessionmaker(
+        bind=motor,
+        autoflush=False,
+        autocommit=False,
+    )
+    with fabrica_sesiones() as sesion_inicial:
+        poblar_datos_demo(sesion_inicial)
+
+    sesion = scoped_session(fabrica_sesiones)
+    catalogos = RepositorioCatalogos(sesion)
+    calendario = CalendarioRecursos(sesion)
+    politica = PoliticaPrestamo(
+        calendario=calendario,
+        consultar_disponibilidad=calendario.unidades_disponibles,
+        consultar_restricciones=calendario.consultar_restricciones,
+    )
+    control = ControlPrestamos(
+        politica=politica,
+        catalogos=catalogos,
+        solicitudes=RepositorioSolicitudes(sesion),
+        notificador=NotificadorSolicitudes(sesion),
+        auditor=AuditorSolicitudes(),
+        crear_solicitud=crear_solicitud_prestamo,
+    )
+    return crear_app(
+        control=control,
+        resolver_usuario_demo=ResolutorUsuarioDemo(sesion),
+        montar_estaticos=montar_estaticos,
+    )
+
+
+app = crear_app_integrada()

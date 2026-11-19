@@ -7,6 +7,8 @@ from app.schemas import DatosSolicitud, leer_atributo
 
 
 class ErrorCU01(Exception):
+    """Error controlado que la capa HTTP traduce al estado correspondiente."""
+
     def __init__(
         self,
         status_code: int,
@@ -47,11 +49,14 @@ class ControlPrestamos:
         return self.catalogos.listar_materias()
 
     def prevalidar(self, datos: DatosSolicitud, usuario: Any) -> dict[str, Any]:
+        """Consulta catalogos y delega reglas sin modificar la base de datos."""
         tipo, materia = self._obtener_catalogos(datos)
         resultado = self.politica.evaluar(datos, usuario, tipo, materia)
         return self._resultado_valido(resultado, datos, tipo, materia)
 
     def confirmar(self, datos: DatosSolicitud, usuario: Any) -> dict[str, Any]:
+        """Revalida y registra una solicitud pendiente junto con su historial."""
+        # La disponibilidad puede cambiar desde la pantalla de resumen.
         tipo, materia = self._obtener_catalogos(datos)
         resultado = self.politica.revalidar(datos, usuario, tipo, materia)
         resultado_normalizado = self._resultado_valido(
@@ -59,6 +64,7 @@ class ControlPrestamos:
         )
         requiere_aval = resultado_normalizado["requiere_aval"]
 
+        # Si falla solicitud o historial, la API no devuelve un falso exito.
         try:
             solicitud = self.crear_solicitud(
                 datos, usuario, tipo, materia, requiere_aval
@@ -76,6 +82,7 @@ class ControlPrestamos:
 
         advertencias: list[str] = []
         if requiere_aval:
+            # El aviso ocurre despues del guardado; su fallo no elimina la solicitud.
             try:
                 self.notificador.avisar_aval(solicitud, materia)
             except Exception:
@@ -113,7 +120,10 @@ class ControlPrestamos:
     ) -> dict[str, Any]:
         valido = bool(leer_atributo(resultado, "valido", False))
         requiere_aval = bool(leer_atributo(resultado, "requiere_aval", False))
-        errores = [self._normalizar_error(error) for error in leer_atributo(resultado, "errores", [])]
+        errores = [
+            self._normalizar_error(error)
+            for error in leer_atributo(resultado, "errores", [])
+        ]
 
         if not valido:
             status_code = self._status_para_errores(errores)
@@ -149,6 +159,7 @@ class ControlPrestamos:
 
     @staticmethod
     def _status_para_errores(errores: list[dict[str, Any]]) -> int:
+        """Agrupa errores de dominio en los estados HTTP acordados."""
         codigos = {error["codigo"] for error in errores}
         if codigos & {"SIN_DISPONIBILIDAD", "DISPONIBILIDAD_CAMBIO"}:
             return 409

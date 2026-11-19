@@ -15,6 +15,7 @@ DATOS_VALIDOS = {
 }
 
 
+# Los dobles aislan la API de las reglas y la persistencia de otros modulos.
 class CatalogosDoble:
     def __init__(self) -> None:
         self.tipo = SimpleNamespace(id="CAMARA", nombre="Cámara", alta_gama=False)
@@ -167,6 +168,15 @@ def test_listar_catalogos():
     assert tipos.json() == [{"id": "CAMARA", "nombre": "Cámara", "alta_gama": False}]
     assert materias.status_code == 200
     assert materias.json() == [{"id": "materia-1", "nombre": "Proyecto 2"}]
+
+
+def test_app_sirve_frontend_estatico():
+    cliente, _ = construir_cliente()
+
+    respuesta = cliente.get("/")
+
+    assert respuesta.status_code == 200
+    assert "Solicitud de Equipamiento (CU_01)" in respuesta.text
 
 
 def test_prevalidar_usa_usuario_demo_y_devuelve_resumen():
