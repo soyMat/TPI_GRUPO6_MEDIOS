@@ -75,6 +75,8 @@ class TipoEquipamiento(Base):
     nombre: Mapped[str] = mapped_column(String(100))
     alta_gama: Mapped[bool] = mapped_column(Boolean, default=False)
     equipamientos: Mapped[list["Equipamiento"]] = relationship(back_populates="tipo")
+    restricciones: Mapped[list["Restriccion"]] = relationship()
+    tipo: Mapped["TipoEquipamiento"] = relationship()
 
 # EQUIPAMIENTO
 class Equipamiento(Base):
@@ -125,7 +127,7 @@ class Restriccion(Base):
 # SOLICITUDES
 class Solicitud(Base):
     __tablename__ = "solicitudes"
-    numero: Mapped[int] = mapped_column(primary_key=True)
+    numero: Mapped[str] = mapped_column(String, primary_key=True)
     usuario_id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"))
     creada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     estado: Mapped[str] = mapped_column(String(40),default="PENDIENTE_SOLICITADA")
@@ -141,7 +143,7 @@ class Solicitud(Base):
 # SOLICITUD DE PRESTAMO
 class SolicitudPrestamo(Solicitud):
     __tablename__ = "solicitudes_prestamo"
-    numero: Mapped[int] = mapped_column(ForeignKey("solicitudes.numero"),primary_key=True)
+    numero: Mapped[str] = mapped_column(ForeignKey("solicitudes.numero"), primary_key=True)
     tipo_codigo: Mapped[str] = mapped_column(ForeignKey("tipos_equipamiento.codigo"))
     cantidad: Mapped[int] = mapped_column(Integer)
     desde: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -152,6 +154,7 @@ class SolicitudPrestamo(Solicitud):
     __mapper_args__ = {
         "polymorphic_identity": "prestamo"
     }
+    tipo: Mapped["TipoEquipamiento"] = relationship()
 
 
 
@@ -159,7 +162,7 @@ class SolicitudPrestamo(Solicitud):
 class CambioEstado(Base):
     __tablename__ = "cambios_estado"
     id: Mapped[int] = mapped_column(primary_key=True)
-    solicitud_numero: Mapped[int] = mapped_column(ForeignKey("solicitudes.numero"))
+    solicitud_numero: Mapped[str] = mapped_column(ForeignKey("solicitudes.numero"))
     actor_id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"))
     anterior: Mapped[str | None] = mapped_column(String(40), nullable=True)
     nuevo: Mapped[str] = mapped_column(String(40))
@@ -172,7 +175,7 @@ class CambioEstado(Base):
 class Prestamo(Base):
     __tablename__ = "prestamos"
     id: Mapped[int] = mapped_column(primary_key=True)
-    solicitud_numero: Mapped[int] = mapped_column(ForeignKey("solicitudes_prestamo.numero"), unique=True)
+    solicitud_numero: Mapped[str] = mapped_column(ForeignKey("solicitudes_prestamo.numero"), unique=True)
     desde: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     hasta: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     detalles: Mapped[list["DetallePrestamo"]] = relationship(back_populates="prestamo", cascade="all, delete-orphan")
@@ -194,7 +197,7 @@ class Notificacion(Base):
     __tablename__ = "notificaciones"
     id: Mapped[int] = mapped_column(primary_key=True)
     destinatario_id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"))
-    solicitud_numero: Mapped[int | None] = mapped_column(ForeignKey("solicitudes.numero"), nullable=True)
+    solicitud_numero: Mapped[str | None] = mapped_column(ForeignKey("solicitudes.numero"), nullable=True)
     mensaje: Mapped[str] = mapped_column(String(250))
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     destinatario: Mapped["Usuario"] = relationship(back_populates="notificaciones")
