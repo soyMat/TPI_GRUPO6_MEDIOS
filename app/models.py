@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from sqlalchemy import (Boolean, DateTime, ForeignKey, Integer, String, Uuid)
 from sqlalchemy.orm import (DeclarativeBase, Mapped, mapped_column, relationship)
+from sqlalchemy import Date
+from datetime import date
 
 
 class Base(DeclarativeBase):
@@ -26,25 +28,47 @@ class Usuario(Base):
         "polymorphic_identity": "usuario"
     }
 
-
+# Estudiantes
 class Estudiante(Usuario):
     __tablename__ = "estudiantes"
     id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"), primary_key=True)
+    carrera: Mapped[str] = mapped_column(String)
+    anio_cursada: Mapped[int] = mapped_column(Integer)
+    tesista_avanzado: Mapped[bool] = mapped_column(Boolean)
     restricciones: Mapped[list["Restriccion"]] = relationship(back_populates="estudiante")
     __mapper_args__ = {
         "polymorphic_identity": "estudiante"
     }
 
-
+# Docentes
 class Docente(Usuario):
     __tablename__ = "docentes"
     id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"), primary_key=True)
+    es_tutor: Mapped[bool] = mapped_column(Boolean)
+    especialidad: Mapped[str] = mapped_column(String)
+    asignaciones_materia: Mapped[list["AsignacionDocenteMateria"]] = relationship(back_populates="docente")
     __mapper_args__ = {
         "polymorphic_identity": "docente"
     }
 
+# Personal de laboratorio, que hereda de Usuario y tiene un legajo
+class PersonalLaboratorio(Usuario):
+    __tablename__ = "personal_laboratorio"
+    id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"), primary_key=True)
+    legajo: Mapped[str] = mapped_column(String)
+    __mapper_args__ = {
+        "polymorphic_identity": "personal_laboratorio"
+    }
 
-#clase de tipo de equipamiento, que tiene un codigo, nombre y si es de alta gama o no. Tambien tiene una relacion con la clase equipamiento
+# Directora, que hereda de Usuario y representa a la directora del laboratorio
+class Directora(Usuario):
+    __tablename__ = "directoras"
+    id: Mapped[UUID] = mapped_column(ForeignKey("usuarios.id"), primary_key=True)
+    __mapper_args__ = {
+        "polymorphic_identity": "directora"
+    }
+
+# Tipo de equipamiento, que tiene un codigo, nombre y si es de alta gama o no. Tambien tiene una relacion con la clase equipamiento
 class TipoEquipamiento(Base):
     __tablename__ = "tipos_equipamiento"
     codigo: Mapped[str] = mapped_column(String(50), primary_key=True)
@@ -52,7 +76,7 @@ class TipoEquipamiento(Base):
     alta_gama: Mapped[bool] = mapped_column(Boolean, default=False)
     equipamientos: Mapped[list["Equipamiento"]] = relationship(back_populates="tipo")
 
-#equipamiento fisico
+# EQUIPAMIENTO
 class Equipamiento(Base):
     __tablename__ = "equipamientos"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -63,22 +87,30 @@ class Equipamiento(Base):
     detalles_prestamo: Mapped[list["DetallePrestamo"]] = relationship(back_populates="equipamiento")
 
 
-# ==========================================
 # MATERIAS
-# ==========================================
-
 class MateriaProyecto(Base):
     __tablename__ = "materias_proyecto"
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True),primary_key=True,default=uuid4)
     nombre: Mapped[str] = mapped_column(String(100))
     prioridad: Mapped[int] = mapped_column(Integer)
     solicitudes: Mapped[list["SolicitudPrestamo"]] = relationship(back_populates="materia")
+    asignaciones_docentes: Mapped[list["AsignacionDocenteMateria"]] = relationship(back_populates="materia")
 
 
-# ==========================================
+# Asignacion de un docente a una materia, con un booleano que indica si el docente esta habilitado para avalar solicitudes de esa materia
+class AsignacionDocenteMateria(Base):
+    __tablename__ = "asignaciones_docente_materia"
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    desde: Mapped[date] = mapped_column(Date)
+    hasta: Mapped[date] = mapped_column(Date)
+    habilita_aval: Mapped[bool] = mapped_column(Boolean)
+    docente_id: Mapped[UUID] = mapped_column(ForeignKey("docentes.id"))
+    materia_id: Mapped[UUID] = mapped_column(ForeignKey("materias_proyecto.id"))
+    docente: Mapped["Docente"] = relationship(back_populates="asignaciones_materia")
+    materia: Mapped["MateriaProyecto"] = relationship(back_populates="asignaciones_docentes")
+
+
 # RESTRICCIONES
-# ==========================================
-
 class Restriccion(Base):
     __tablename__ = "restricciones"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -90,10 +122,7 @@ class Restriccion(Base):
     estudiante: Mapped["Estudiante"] = relationship(back_populates="restricciones")
 
 
-# ==========================================
 # SOLICITUDES
-# ==========================================
-
 class Solicitud(Base):
     __tablename__ = "solicitudes"
     numero: Mapped[int] = mapped_column(primary_key=True)
@@ -109,10 +138,7 @@ class Solicitud(Base):
     }
 
 
-# ==========================================
 # SOLICITUD DE PRESTAMO
-# ==========================================
-
 class SolicitudPrestamo(Solicitud):
     __tablename__ = "solicitudes_prestamo"
     numero: Mapped[int] = mapped_column(ForeignKey("solicitudes.numero"),primary_key=True)
@@ -128,10 +154,8 @@ class SolicitudPrestamo(Solicitud):
     }
 
 
-# ==========================================
-# CAMBIOS DE ESTADO
-# ==========================================
 
+# CAMBIOS DE ESTADO
 class CambioEstado(Base):
     __tablename__ = "cambios_estado"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -144,38 +168,18 @@ class CambioEstado(Base):
     actor: Mapped["Usuario"] = relationship()
 
 
-# ==========================================
 # PRESTAMOS
-# ==========================================
-
 class Prestamo(Base):
     __tablename__ = "prestamos"
-
     id: Mapped[int] = mapped_column(primary_key=True)
-
-    solicitud_numero: Mapped[int] = mapped_column(
-        ForeignKey("solicitudes_prestamo.numero"),
-        unique=True
-    )
-
-    desde: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True)
-    )
-
-    hasta: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True)
-    )
-
-    detalles: Mapped[list["DetallePrestamo"]] = relationship(
-        back_populates="prestamo",
-        cascade="all, delete-orphan"
-    )
+    solicitud_numero: Mapped[int] = mapped_column(ForeignKey("solicitudes_prestamo.numero"), unique=True)
+    desde: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    hasta: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    detalles: Mapped[list["DetallePrestamo"]] = relationship(back_populates="prestamo", cascade="all, delete-orphan")
 
 
-# ==========================================
+
 # DETALLES DE PRESTAMO
-# ==========================================
-
 class DetallePrestamo(Base):
     __tablename__ = "detalles_prestamo"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -185,10 +189,7 @@ class DetallePrestamo(Base):
     equipamiento: Mapped["Equipamiento"] = relationship(back_populates="detalles_prestamo")
 
 
-# ==========================================
 # NOTIFICACIONES
-# ==========================================
-
 class Notificacion(Base):
     __tablename__ = "notificaciones"
     id: Mapped[int] = mapped_column(primary_key=True)
